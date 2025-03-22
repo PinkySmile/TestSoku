@@ -1,5 +1,5 @@
 //
-// Created by Gegel85 on 04/06/2020.
+// Created by PinkySmile on 04/06/2020.
 //
 
 #include <iostream>
@@ -8,8 +8,60 @@
 #include <string>
 #include "Packet.hpp"
 
+#ifdef _WIN32
+#define s_b1 S_un.S_un_b.s_b1
+#define s_b2 S_un.S_un_b.s_b2
+#define s_b3 S_un.S_un_b.s_b3
+#define s_b4 S_un.S_un_b.s_b4
+#else
+#define s_b1 s_addr >> 0 & 0xFF
+#define s_b2 s_addr >> 8 & 0xFF
+#define s_b3 s_addr >> 16 & 0xFF
+#define s_b4 s_addr >> 24 & 0xFF
+#endif
+
 namespace Soku
 {
+	std::vector<std::string> charactersName{
+		"Reimu Hakurei",
+		"Marisa Kirisame",
+		"Sakuya Izayoi",
+		"Alice Margatroid",
+		"Patchouli Knowledge",
+		"Youmu Konpaku",
+		"Remilia Scarlet",
+		"Yuyuko Saigyouji",
+		"Yukari Yakumo",
+		"Suika Ibuki",
+		"Reisen Udongein Inaba",
+		"Aya Shameimaru",
+		"Komachi Onozuka",
+		"Iku Nagae",
+		"Tenshi Hinanawi",
+		"Sanae Kochiya",
+		"Cirno",
+		"Hong Meiling",
+		"Utsuho Reiuji",
+		"Suwako Moriya",
+		"Random Select",
+		"Namazu",
+		//Soku2 Characters
+		"Momiji Inubashiri",
+		"Clownpiece",
+		"Flandre Scarlet",
+		"Rin Kaenbyou",
+		"Yuuka Kazami",
+		"Kaguya Houraisan",
+		"Fujiwara no Mokou",
+		"Mima",
+		"Shou Tormaru",
+		"Minamitsu Murasa",
+		"Sekibanki",
+		"Satori Komeiji",
+		"Ran Yakumo",
+		"Tewi Inaba"
+	};
+
 	uint8_t Soku110acRollSWRAllChars[16] = {
 		0x64, 0x73, 0x65, 0xD9,
 		0xFF, 0xC4, 0x6E, 0x48,
@@ -29,15 +81,15 @@ namespace Soku
 		0xD4, 0xD5, 0x40, 0x4A
 	};
 
-	void displayGameEvent(std::ostream &stream, const Soku::GameEvent &event)
+	void displayGameEvent(std::ostream &stream, const GameEvent &event)
 	{
 		stream << ", eventType: " << GameTypeToString(event.type);
 		switch (event.type) {
-		case Soku::GAME_LOADED:
-		case Soku::GAME_LOADED_ACK:
+		case GAME_LOADED:
+		case GAME_LOADED_ACK:
 			stream << ", sceneId: " << SceneIdToString(event.loaded.sceneId);
 			break;
-		case Soku::GAME_INPUT:
+		case GAME_INPUT:
 			stream << ", frameId: " << event.input.frameId;
 			stream << ", sceneId: " << SceneIdToString(event.input.sceneId);
 			stream << ", inputCount: " << static_cast<int>(event.input.inputCount);
@@ -46,77 +98,78 @@ namespace Soku
 				stream << (i == 0 ? "" : ", ") << *reinterpret_cast<const uint16_t *>(&event.input.inputs[i]);
 			stream << "]" << std::dec;
 			break;
-		case Soku::GAME_MATCH:
+		case GAME_MATCH:
 			stream << ", host: " << event.match.host;
 			stream << ", client: " << event.match.client();
-			stream << ", stageId: " << event.match.stageId();
-			stream << ", musicId: " << event.match.musicId();
+			stream << ", stageId: " << +event.match.stageId();
+			stream << ", musicId: " << +event.match.musicId();
 			stream << ", randomSeed: " << event.match.randomSeed();
-			stream << ", matchId: " << event.match.matchId();
+			stream << ", matchId: " << +event.match.matchId();
 			break;
-		case Soku::GAME_REPLAY:
+		case GAME_REPLAY:
+			stream << ", replaySize: " << +event.replay.replaySize;
 			break;
-		case Soku::GAME_REPLAY_REQUEST:
-			stream << ", frameId" << event.replayRequest.frameId;
-			stream << ", matchId" << event.replayRequest.matchId;
+		case GAME_REPLAY_REQUEST:
+			stream << ", frameId: " << +event.replayRequest.frameId;
+			stream << ", matchId: " << +event.replayRequest.matchId;
 			break;
-		case Soku::GAME_MATCH_ACK:
-		case Soku::GAME_MATCH_REQUEST:
+		case GAME_MATCH_ACK:
+		case GAME_MATCH_REQUEST:
 			break;
 		}
 	}
 
 	std::ostream &operator<<(std::ostream &stream, const PlayerMatchData &data)
 	{
-		stream << "{character: " << CharacterToString(data.character);
-		stream << ", skinId: " << data.skinId;
-		stream << ", deckId: " << data.deckId;
-		stream << ", deckSize: " << data.deckSize;
+		stream << "{character: " << (data.character < charactersName.size() ? charactersName.at(data.character) : "Character " + std::to_string(data.character));
+		stream << ", skinId: " << +data.skinId;
+		stream << ", deckId: " << +data.deckId;
+		stream << ", deckSize: " << +data.deckSize;
 		stream << ", cards: [" << std::hex;
 		for (int i = 0; i < data.deckSize; i++)
 			stream << (i == 0 ? "" : ", ") << data.cards[i];
 		stream << "]";
-		stream << ", disabledSimultaneousButton: " << std::boolalpha << data.disabledSimultaneousButton() << std::noboolalpha << "}";
+		stream << ", disabledSimultaneousButton: " << std::boolalpha << +data.disabledSimultaneousButton() << std::noboolalpha << "}" << std::dec;
 		return stream;
 	}
 
-	void displayPacketContent(std::ostream &stream, const Soku::Packet &packet)
+	void displayPacketContent(std::ostream &stream, const Packet &packet)
 	{
 		stream << "type: " << PacketTypeToString(packet.type);
 		switch (packet.type) {
-		case Soku::HELLO:
+		case HELLO:
 			stream << ", peer: ";
-			stream << static_cast<int>(packet.hello.peer.sin_addr.S_un.S_un_b.s_b1) << ".";
-			stream << static_cast<int>(packet.hello.peer.sin_addr.S_un.S_un_b.s_b2) << ".";
-			stream << static_cast<int>(packet.hello.peer.sin_addr.S_un.S_un_b.s_b3) << ".";
-			stream << static_cast<int>(packet.hello.peer.sin_addr.S_un.S_un_b.s_b4) << ":";
+			stream << static_cast<int>(packet.hello.peer.sin_addr.s_b1) << ".";
+			stream << static_cast<int>(packet.hello.peer.sin_addr.s_b2) << ".";
+			stream << static_cast<int>(packet.hello.peer.sin_addr.s_b3) << ".";
+			stream << static_cast<int>(packet.hello.peer.sin_addr.s_b4) << ":";
 			stream << static_cast<int>(htons(packet.hello.peer.sin_port)) << ", target: ";
-			stream << static_cast<int>(packet.hello.target.sin_addr.S_un.S_un_b.s_b1) << ".";
-			stream << static_cast<int>(packet.hello.target.sin_addr.S_un.S_un_b.s_b2) << ".";
-			stream << static_cast<int>(packet.hello.target.sin_addr.S_un.S_un_b.s_b3) << ".";
-			stream << static_cast<int>(packet.hello.target.sin_addr.S_un.S_un_b.s_b4) << ":";
+			stream << static_cast<int>(packet.hello.target.sin_addr.s_b1) << ".";
+			stream << static_cast<int>(packet.hello.target.sin_addr.s_b2) << ".";
+			stream << static_cast<int>(packet.hello.target.sin_addr.s_b3) << ".";
+			stream << static_cast<int>(packet.hello.target.sin_addr.s_b4) << ":";
 			stream << static_cast<int>(htons(packet.hello.target.sin_port)) << ", unknown: [";
 			stream << std::hex;
 			for (int i = 0; i < 4; i++)
 				stream << (i == 0 ? "" : ", ") << "0x" << static_cast<int>(packet.punch.unknown[i]);
 			stream << "]" << std::dec;
 			break;
-		case Soku::PUNCH:
+		case PUNCH:
 			stream << ", addr: ";
-			stream << static_cast<int>(packet.punch.addr.sin_addr.S_un.S_un_b.s_b1) << ".";
-			stream << static_cast<int>(packet.punch.addr.sin_addr.S_un.S_un_b.s_b2) << ".";
-			stream << static_cast<int>(packet.punch.addr.sin_addr.S_un.S_un_b.s_b3) << ".";
-			stream << static_cast<int>(packet.punch.addr.sin_addr.S_un.S_un_b.s_b4) << ":";
+			stream << static_cast<int>(packet.punch.addr.sin_addr.s_b1) << ".";
+			stream << static_cast<int>(packet.punch.addr.sin_addr.s_b2) << ".";
+			stream << static_cast<int>(packet.punch.addr.sin_addr.s_b3) << ".";
+			stream << static_cast<int>(packet.punch.addr.sin_addr.s_b4) << ":";
 			stream << static_cast<int>(htons(packet.punch.addr.sin_port)) << ", unknown: [";
 			stream << std::hex;
 			for (int i = 0; i < 4; i++)
 				stream << (i == 0 ? "" : ", ") << "0x" << static_cast<int>(packet.punch.unknown[i]);
 			stream << "]" << std::dec;
 			break;
-		case Soku::CHAIN:
+		case CHAIN:
 			stream << ", spectatorCount: " << packet.chain.spectatorCount;
 			break;
-		case Soku::INIT_REQUEST:
+		case INIT_REQUEST:
 			stream << ", gameId: [" << std::hex;
 			for (int i = 0; i < 16; i++)
 				stream << (i == 0 ? "" : ", ") << "0x" << static_cast<int>(packet.initRequest.gameId[i]);
@@ -127,7 +180,7 @@ namespace Soku
 			stream << ", nameLength: " << static_cast<int>(packet.initRequest.nameLength) << ", name: \"";
 			stream << std::string(packet.initRequest.name, packet.initRequest.nameLength) << "\"";
 			break;
-		case Soku::INIT_SUCCESS:
+		case INIT_SUCCESS:
 			stream << ", unknown1: [";
 			stream << std::hex;
 			for (int i = 0; i < 8; i++)
@@ -143,35 +196,50 @@ namespace Soku
 				stream << ", swrDisabled: " << packet.initSuccess.swrDisabled;
 			}
 			break;
-		case Soku::INIT_ERROR:
+		case INIT_ERROR:
 			stream << ", reason: " << packet.initError.reason;
 			break;
-		case Soku::REDIRECT:
+		case REDIRECT:
 			stream << ", childId: " << packet.redirect.childId;
 			stream << ", target: ";
-			stream << static_cast<int>(packet.redirect.target.sin_addr.S_un.S_un_b.s_b1) << ".";
-			stream << static_cast<int>(packet.redirect.target.sin_addr.S_un.S_un_b.s_b2) << ".";
-			stream << static_cast<int>(packet.redirect.target.sin_addr.S_un.S_un_b.s_b3) << ".";
-			stream << static_cast<int>(packet.redirect.target.sin_addr.S_un.S_un_b.s_b4) << ":";
+			stream << static_cast<int>(packet.redirect.target.sin_addr.s_b1) << ".";
+			stream << static_cast<int>(packet.redirect.target.sin_addr.s_b2) << ".";
+			stream << static_cast<int>(packet.redirect.target.sin_addr.s_b3) << ".";
+			stream << static_cast<int>(packet.redirect.target.sin_addr.s_b4) << ":";
 			stream << static_cast<int>(htons(packet.redirect.target.sin_port)) << ", unknown: [" << std::hex;
 			for (int i = 0; i < 48; i++)
 				stream << (i == 0 ? "" : ", ") << "0x" << static_cast<int>(packet.redirect.unknown[i]);
 			stream << "]" << std::dec;
 			break;
-		case Soku::OLLEH:
-		case Soku::QUIT:
-		case Soku::SOKUROLL_SETTINGS_ACK:
+		case OLLEH:
+		case QUIT:
+		case SOKUROLL_SETTINGS_ACK:
+		case APM_START_SESSION_REQUEST:
+		case DESDET_MOD_ENABLE_REQUEST:
 			break;
-		case Soku::HOST_GAME:
-		case Soku::CLIENT_GAME:
+		case SOKU2_PLAY_REQU:
+			stream << ", version: " << +packet.soku2PlayRequ.major << "." << +packet.soku2PlayRequ.minor << packet.soku2PlayRequ.letter;
+			break;
+		case DESDET_STATE:
+			stream << ", lX: " << std::dec << packet.desDetState.lX;
+			stream << ", lY: " << packet.desDetState.lY;
+			stream << ", rX: " << packet.desDetState.rX;
+			stream << ", rY: " << packet.desDetState.rY;
+			stream << ", lHP: " << packet.desDetState.lHP;
+			stream << ", rHP: " << packet.desDetState.rHP;
+			stream << ", weatherCounter: " << packet.desDetState.weatherCounter;
+			stream << ", displayedWeather: " << packet.desDetState.displayedWeather;
+			break;
+		case HOST_GAME:
+		case CLIENT_GAME:
 			displayGameEvent(stream, packet.game.event);
 			break;
-		case Soku::SOKUROLL_TIME:
-		case Soku::SOKUROLL_TIME_ACK:
+		case SOKUROLL_TIME:
+		case SOKUROLL_TIME_ACK:
 			stream << ", sequenceId: " << packet.rollTime.sequenceId;
 			stream << ", timeStamp: " << packet.rollTime.timeStamp;
 			break;
-		case Soku::SOKUROLL_STATE:
+		case SOKUROLL_STATE:
 			stream << ", frameId: " << packet.rollState.frameId;
 			stream << ", hostX: " << packet.rollState.hostX;
 			stream << ", hostY: " << packet.rollState.hostY;
@@ -182,9 +250,14 @@ namespace Soku
 				stream << (i == 0 ? "" : ", ") << "0x" << static_cast<int>(packet.rollState.stuff[i]);
 			stream << "]" << std::dec;
 			break;
-		case Soku::SOKUROLL_SETTINGS:
+		case SOKUROLL_SETTINGS:
 			stream << ", maxRollback: " << static_cast<int>(packet.rollSettings.maxRollback);
 			stream << ", delay: " << static_cast<int>(packet.rollSettings.delay);
+			break;
+		case APM_START_SESSION_RESPONSE:
+			stream << ", accepted: " << std::boolalpha << packet.apmResponse.accepted << std::noboolalpha;
+			break;
+		case APM_ELEM_UPDATED:
 			break;
 		}
 	}
@@ -224,6 +297,18 @@ namespace Soku
 			return "SOKUROLL_SETTINGS";
 		case SOKUROLL_SETTINGS_ACK:
 			return "SOKUROLL_SETTINGS_ACK";
+		case APM_START_SESSION_REQUEST:
+			return "APM_START_SESSION_REQUEST";
+		case APM_START_SESSION_RESPONSE:
+			return "APM_START_SESSION_RESPONSE";
+		case APM_ELEM_UPDATED:
+			return "APM_ELEM_UPDATED";
+		case DESDET_MOD_ENABLE_REQUEST:
+			return "DESDET_MOD_ENABLE_REQUEST";
+		case DESDET_STATE:
+			return "DESDET_STATE";
+		case SOKU2_PLAY_REQU:
+			return "SOKU2_PLAY_REQU";
 		default:
 			return "Unknown PacketType " + std::to_string(e);
 		}
@@ -262,54 +347,6 @@ namespace Soku
 			return "ERROR_GAME_STATE_INVALID";
 		default:
 			return "Unknown InitErrors " + std::to_string(e);
-		}
-	}
-
-	std::string CharacterToString(Character e)
-	{
-		switch (e) {
-		case CHARACTER_REIMU:
-			return "REIMU";
-		case CHARACTER_MARISA:
-			return "MARISA";
-		case CHARACTER_SAKUYA:
-			return "SAKUYA";
-		case CHARACTER_ALICE:
-			return "ALICE";
-		case CHARACTER_PATCHOULI:
-			return "PATCHOULI";
-		case CHARACTER_YOUMU:
-			return "YOUMU";
-		case CHARACTER_REMILIA:
-			return "REMILIA";
-		case CHARACTER_YUYUKO:
-			return "YUYUKO";
-		case CHARACTER_YUKARI:
-			return "YUKARI";
-		case CHARACTER_SUIKA:
-			return "SUIKA";
-		case CHARACTER_REISEN:
-			return "REISEN";
-		case CHARACTER_AYA:
-			return "AYA";
-		case CHARACTER_KOMACHI:
-			return "KOMACHI";
-		case CHARACTER_IKU:
-			return "IKU";
-		case CHARACTER_TENSHI:
-			return "TENSHI";
-		case CHARACTER_SANAE:
-			return "SANAE";
-		case CHARACTER_CIRNO:
-			return "CIRNO";
-		case CHARACTER_MEILING:
-			return "MEILING";
-		case CHARACTER_UTSUHO:
-			return "UTSUHO";
-		case CHARACTER_SUWAKO:
-			return "SUWAKO";
-		default:
-			return "Unknown Character " + std::to_string(e);
 		}
 	}
 

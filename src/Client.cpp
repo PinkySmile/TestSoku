@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <cstring>
+#include <arpa/inet.h>
 #include "Packet.hpp"
 #include "Client.hpp"
 #include "Exceptions.hpp"
@@ -91,10 +92,11 @@ namespace Soku
 		Packet packet;
 		State state{false};
 
+		puts("T");
 		this->_handlePacket(
 			this->_remote,
 			state,
-			this->_connect("SokuTest", host, port, true),
+			this->_connect("There is no escape", host, port, true),
 			handler
 		);
 		while (!state.quit) {
@@ -113,7 +115,7 @@ namespace Soku
 
 		add.sin_family = SOCK_DGRAM;
 		add.sin_port = htons(port);
-		add.sin_addr.S_un.S_addr = inet_addr(this->_remote.getIp().toString().c_str());
+		add.sin_addr.s_addr = inet_addr(this->_remote.getIp().toString().c_str());
 
 		this->_sendHello(this->_remote, add, add);
 		this->_remote.receiveNextPacket(packet);
@@ -182,10 +184,16 @@ namespace Soku
 		char array[65];
 		auto packet = reinterpret_cast<PacketInitRequ *>(array);
 		uint8_t data[]{0x3B, 0xAA, 0x01, 0x6E, 0x28, 0x00, 0xFC, 0x30};
+		unsigned char version[] = {
+			0x69, 0x73, 0x65, 0xD9,
+			0xFF, 0xC4, 0x6E, 0x48,
+			0x8D, 0x7C, 0xA1, 0x92,
+			0x31, 0x34, 0x72, 0x95
+		};
 
 		memset(array, 0, sizeof(array));
 		packet->type = INIT_REQUEST;
-		std::memcpy(packet->gameId, Soku110acRollSWRAllChars, sizeof(packet->gameId));
+		std::memcpy(packet->gameId, version, sizeof(packet->gameId));
 		std::memcpy(packet->unknown, data, sizeof(packet->unknown));
 		packet->reqType = type;
 
@@ -193,7 +201,6 @@ namespace Soku
 			std::strncpy(packet->name, name.c_str(), std::min(255U, static_cast<unsigned>(name.size())));
 			packet->nameLength = strlen(packet->name);
 		}
-
 		remote.sendRawData(packet, sizeof(array));
 	}
 
@@ -477,7 +484,7 @@ namespace Soku
 
 		add.sin_family = SOCK_DGRAM;
 		add.sin_port = htons(this->_remote.getPort());
-		add.sin_addr.S_un.S_addr = inet_addr(this->_remote.getIp().toString().c_str());
+		add.sin_addr.s_addr = inet_addr(this->_remote.getIp().toString().c_str());
 
 		this->_sendHello(this->_remote, add, packet.target);
 		this->connect(inet_ntoa(packet.target.sin_addr), htons(packet.target.sin_port));

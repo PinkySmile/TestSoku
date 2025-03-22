@@ -27,10 +27,11 @@ namespace Soku
 			this->_thread.join();
 	}
 
-	RemoteClient::RemoteClient(const sf::IpAddress &ip, unsigned short port)
+	RemoteClient::RemoteClient(const sf::IpAddress &ip, unsigned short port) :
+		_ip(ip),
+		_port(port)
 	{
-		this->setBlocking(true);
-		this->setRemote(ip, port);
+		this->setBlocking(false);
 	}
 
 	RemoteClient::~RemoteClient()
@@ -42,7 +43,7 @@ namespace Soku
 	{
 		auto status = this->send(data, size, this->_ip, this->_port);
 
-		this->_connected &= status == sf::Socket::Done;
+		this->_connected &= status == sf::Socket::Status::Done;
 
 		switch (status) {
 			case sf::Socket::Status::Disconnected:
@@ -66,9 +67,19 @@ namespace Soku
 		size_t readSize;
 		sf::IpAddress ip = this->_ip;
 		auto port = this->_port;
+		int i = 0;
+	recv:
+		i++;
+		this->setBlocking(false);
 		auto status = this->receive(data, size, readSize, ip, port);
 
-		if (status == sf::Socket::Done) {
+		if (i >= 30)
+			throw std::exception();
+		if (status == sf::Socket::Status::NotReady) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			goto recv;
+		}
+		if (status == sf::Socket::Status::Done) {
 			this->_ip = ip;
 			this->_port = port;
 			this->_connected = true;

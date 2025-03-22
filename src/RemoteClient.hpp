@@ -37,6 +37,7 @@ namespace Soku
 		template<typename type>
 		size_t receiveNextPacket(type &packet)
 		{
+			puts("t");
 			return this->receiveNextData(&packet, sizeof(packet));
 		}
 
